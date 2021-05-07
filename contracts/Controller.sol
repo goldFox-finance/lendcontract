@@ -83,6 +83,8 @@ contract Controller {
     }
 
     function getPrice(MarketInterface market) public view returns(uint256){
+        // test
+        return 1;
         IUniswapV2Pair _pair =
             IUniswapV2Pair(
                 IUniswapV2Factory(factory).getPair(market.token(), usdt)

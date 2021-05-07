@@ -1,14 +1,16 @@
 #!/bin/sh
 
+# 发布 token
+node deploy eth token1 CommonToken "1000000000000000000000000000000000;GFC-T;18;GFC-T"
 
 # mdex factory 0xb0b670fc1f7724119963018db0bfa86adb22d941 
 # usdt 0xa71edc38d189767582c38a3145b5873052c3e47a
 # gfc 0xd9be10a6580db5675cedc420ae6c7c2888891132
 
 # controller
-# node deploy alice controller Controller '0xb0b670fc1f7724119963018db0bfa86adb22d941;0xa71edc38d189767582c38a3145b5873052c3e47a'
-# node invoke alice controller 'setCollateralFactor(uint256)' 1000000
-# node invoke alice controller 'setLiquidationFactor(uint256)' 500000
+node deploy alice controller Controller '0xb0b670fc1f7724119963018db0bfa86adb22d941;0xa71edc38d189767582c38a3145b5873052c3e47a'
+node invoke alice controller 'setCollateralFactor(uint256)' 1000000
+node invoke alice controller 'setLiquidationFactor(uint256)' 500000
 
 # cru-martket
 # node deploy alice market1 Market 'token1;0xd9be10a6580db5675cedc420ae6c7c2888891132;1;1000000000;100000000000;30000;alice'

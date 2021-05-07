@@ -23,6 +23,7 @@ contract CommonToken is StandardToken {
         name = _tokenName;
         symbol = _tokenSymbol;
         decimals = _decimalUnits;
+        owner = msg.sender;
     }
 
     function addMiner(address to) public onlyOwner{

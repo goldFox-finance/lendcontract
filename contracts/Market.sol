@@ -38,8 +38,8 @@ contract Market is Pool , MarketInterface {
         uint256 rewardDebt;
     }
 
-    mapping (address => SupplySnapshot) supplies;
-    mapping (address => BorrowSnapshot) borrows;
+    mapping (address => SupplySnapshot) public supplies;
+    mapping (address => BorrowSnapshot) public borrows;
 
     uint256 public constant FACTOR = 1e18;
 
@@ -49,7 +49,7 @@ contract Market is Pool , MarketInterface {
     event PayBorrow(address user, uint256 amount);
     event LiquidateBorrow(address borrower, uint256 amount, address liquidator, address collateralMarket, uint256 collateralAmount);
 
-    constructor(ERC20 _token, uint256 _baseBorrowAnnualRate, uint256 _blocksPerYear, uint256 _utilizationRateFraction,address _devaddr) public {
+    constructor(ERC20 _token,ERC20 _gfc, uint256 _baseBorrowAnnualRate, uint256 _blocksPerYear, uint256 _utilizationRateFraction,address _devaddr) public {
         require(ERC20(_token).totalSupply() >= 0);
         owner = msg.sender;
         token = _token;
@@ -59,6 +59,7 @@ contract Market is Pool , MarketInterface {
         baseBorrowRate = _baseBorrowAnnualRate.div(_blocksPerYear);
         accrualBlockNumber = block.number;
         devaddr = _devaddr;
+        gfc = _gfc;
         utilizationRateFraction = _utilizationRateFraction.mul(FACTOR).div(_blocksPerYear);
     }
 
@@ -72,10 +73,10 @@ contract Market is Pool , MarketInterface {
         if (block.number > lastSupplyRewardBlock && lpSupply != 0) {
             uint256 blocks = block.number.sub(lastSupplyRewardBlock);
             uint256 reward = blocks.mul(supplyPerBlock);
-            uint256 accReward = reward.mul(ACC_PRECISION) / lpSupply;
+            uint256 accReward = reward.mul(ACC_PRECISION).div(lpSupply);
             _accPerShare = _accPerShare.add(accReward);
         }
-        return (user.supply.mul(_accPerShare) / ACC_PRECISION).sub(user.rewardDebt);
+        return user.supply.mul(_accPerShare).div(ACC_PRECISION).sub(user.rewardDebt);
     }
 
     /// @notice View function to see pending SUSHI on frontend.
@@ -88,9 +89,9 @@ contract Market is Pool , MarketInterface {
         if (block.number > lastBorrowRewardBlock && lpSupply != 0) {
             uint256 blocks = block.number.sub(lastBorrowRewardBlock);
             uint256 reward = blocks.mul(borrowPerBlock);
-            _accPerShare = _accPerShare.add(reward.mul(ACC_PRECISION) / lpSupply);
+            _accPerShare = _accPerShare.add(reward.mul(ACC_PRECISION).div(lpSupply));
         }
-        return (user.principal.mul(_accPerShare) / ACC_PRECISION).sub(user.rewardDebt);
+        return user.principal.mul(_accPerShare).div(ACC_PRECISION).sub(user.rewardDebt);
     }
 
       /// @notice Update reward variables of the given pool.
@@ -101,7 +102,7 @@ contract Market is Pool , MarketInterface {
             if (lpSupply > 0) {
                 uint256 blocks = block.number.sub(lastSupplyRewardBlock);
                 uint256 reward = blocks.mul(supplyPerBlock);
-                accSupplyPerShare = accSupplyPerShare.add((reward.mul(ACC_PRECISION) / lpSupply));
+                accSupplyPerShare = accSupplyPerShare.add((reward.mul(ACC_PRECISION).div(lpSupply)));
             }
             lastSupplyRewardBlock = block.number;
         }
@@ -115,7 +116,7 @@ contract Market is Pool , MarketInterface {
             if (lpSupply > 0) {
                 uint256 blocks = block.number.sub(lastBorrowRewardBlock);
                 uint256 reward = blocks.mul(borrowPerBlock);
-                accBorrowPerShare = accBorrowPerShare.add((reward.mul(ACC_PRECISION) / lpSupply));
+                accBorrowPerShare = accBorrowPerShare.add((reward.mul(ACC_PRECISION).div(lpSupply)));
             }
             lastBorrowRewardBlock = block.number;
         }
@@ -278,7 +279,7 @@ contract Market is Pool , MarketInterface {
         supplySnapshot.supply = updatedSupplyOf(supplier);
         supplies[supplier].supply = supplies[supplier].supply.add(amount);
         supplies[supplier].interestIndex = supplyIndex;
-        supplies[supplier].rewardDebt = supplies[supplier].supply.mul(accSupplyPerShare) / ACC_PRECISION;
+        supplies[supplier].rewardDebt = supplies[supplier].supply.mul(accSupplyPerShare).div(ACC_PRECISION);
         totalSupply = totalSupply.add(amount);
     }
 
@@ -320,7 +321,7 @@ contract Market is Pool , MarketInterface {
         } else{
             totalSupply = 0;
         }
-        supplies[supplier].rewardDebt = supplySnapshot.supply.mul(accSupplyPerShare) / ACC_PRECISION;
+        supplySnapshot.rewardDebt = supplySnapshot.supply.mul(accSupplyPerShare).div(ACC_PRECISION);
 
     }
 
@@ -345,7 +346,7 @@ contract Market is Pool , MarketInterface {
         require(token.transfer(msg.sender, amount), "No enough tokens to borrow");
 
         borrowSnapshot.principal = borrowSnapshot.principal.add(amount);
-        borrowSnapshot.rewardDebt = borrowSnapshot.principal.mul(accBorrowPerShare) / ACC_PRECISION;
+        borrowSnapshot.rewardDebt = borrowSnapshot.principal.mul(accBorrowPerShare).div(ACC_PRECISION);
         borrowSnapshot.interestIndex = borrowIndex;
 
         totalBorrows = totalBorrows.add(amount);
@@ -457,7 +458,7 @@ contract Market is Pool , MarketInterface {
         } else{
             totalBorrows = 0;
         }
-        snapshot.rewardDebt = snapshot.principal.mul(accBorrowPerShare) / ACC_PRECISION;
+        snapshot.rewardDebt = snapshot.principal.mul(accBorrowPerShare).div(ACC_PRECISION);
         // if (additional > 0)
         //     supplyInternal(payer, additional);
             
