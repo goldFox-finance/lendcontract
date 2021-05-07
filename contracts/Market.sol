@@ -1,10 +1,10 @@
 pragma solidity >=0.5.0 <0.8.0;
 
-import "./lib/ERC20.sol";
 import "./Controller.sol";
-import "./lib/SafeMath.sol";
+import "./lib/Pool.sol";
+import './lib/SafeMath.sol';
 
-contract Market is MarketInterface {
+contract Market is Pool , MarketInterface {
     using SafeMath for uint256;
 
     address public owner;
@@ -17,7 +17,7 @@ contract Market is MarketInterface {
     uint256 public supplyIndex;
 
     uint256 public accrualBlockNumber;
-
+    uint256 public lendRate;
     uint256 public borrowIndex;
     uint256 public totalBorrows;
     uint256 public baseBorrowRate;
@@ -29,11 +29,13 @@ contract Market is MarketInterface {
     struct SupplySnapshot {
         uint256 supply;
         uint256 interestIndex;
+        uint256 rewardDebt;
     }
 
     struct BorrowSnapshot {
         uint256 principal;
         uint256 interestIndex;
+        uint256 rewardDebt;
     }
 
     mapping (address => SupplySnapshot) supplies;
@@ -60,6 +62,65 @@ contract Market is MarketInterface {
         utilizationRateFraction = _utilizationRateFraction.mul(FACTOR).div(_blocksPerYear);
     }
 
+    /// @notice View function to see pending SUSHI on frontend.
+    /// @param _user Address of user.
+    /// @return pending  reward for a given user.
+    function pendingSupply(address _user) public view returns (uint256) {
+        SupplySnapshot storage user = supplies[_user];
+        uint256 lpSupply = totalSupply;
+        uint256 _accPerShare = accSupplyPerShare;
+        if (block.number > lastSupplyRewardBlock && lpSupply != 0) {
+            uint256 blocks = block.number.sub(lastSupplyRewardBlock);
+            uint256 reward = blocks.mul(supplyPerBlock);
+            uint256 accReward = reward.mul(ACC_PRECISION) / lpSupply;
+            _accPerShare = _accPerShare.add(accReward);
+        }
+        return (user.supply.mul(_accPerShare) / ACC_PRECISION).sub(user.rewardDebt);
+    }
+
+    /// @notice View function to see pending SUSHI on frontend.
+    /// @param _user Address of user.
+    /// @return pending SUSHI reward for a given user.
+    function pendingBorrow(address _user) public view returns (uint256) {
+        BorrowSnapshot storage user = borrows[_user];
+        uint256 lpSupply = totalBorrows;
+        uint256 _accPerShare = accBorrowPerShare;
+        if (block.number > lastBorrowRewardBlock && lpSupply != 0) {
+            uint256 blocks = block.number.sub(lastBorrowRewardBlock);
+            uint256 reward = blocks.mul(borrowPerBlock);
+            _accPerShare = _accPerShare.add(reward.mul(ACC_PRECISION) / lpSupply);
+        }
+        return (user.principal.mul(_accPerShare) / ACC_PRECISION).sub(user.rewardDebt);
+    }
+
+      /// @notice Update reward variables of the given pool.
+    /// @return pool Returns the pool that was updated.
+    function updateSupplyPool() public {
+        if (block.number > lastSupplyRewardBlock) {
+            uint256 lpSupply = getUpdatedTotalSupply();
+            if (lpSupply > 0) {
+                uint256 blocks = block.number.sub(lastSupplyRewardBlock);
+                uint256 reward = blocks.mul(supplyPerBlock);
+                accSupplyPerShare = accSupplyPerShare.add((reward.mul(ACC_PRECISION) / lpSupply));
+            }
+            lastSupplyRewardBlock = block.number;
+        }
+    }
+
+    /// @notice Update reward variables of the given pool.
+    /// @return pool Returns the pool that was updated.
+    function updateBorrowPool() public {
+        if (block.number > lastBorrowRewardBlock) {
+            uint256 lpSupply = getUpdatedTotalBorrows();
+            if (lpSupply > 0) {
+                uint256 blocks = block.number.sub(lastBorrowRewardBlock);
+                uint256 reward = blocks.mul(borrowPerBlock);
+                accBorrowPerShare = accBorrowPerShare.add((reward.mul(ACC_PRECISION) / lpSupply));
+            }
+            lastBorrowRewardBlock = block.number;
+        }
+    }
+
     modifier onlyOwner() {
         require(msg.sender == owner);
         _;
@@ -76,6 +137,22 @@ contract Market is MarketInterface {
 
     function setFutou(address _futou) public{
         futou = _futou;
+    }
+
+    function setGfc(ERC20 _gfc) public{
+        gfc = _gfc;
+    }
+
+
+    function setLendRate(uint256 _lendRate) public{
+        lendRate = _lendRate;
+    }
+
+    function getLendGfc(uint256 _amount) public view returns(uint256){
+        uint256 cprice = controller.getPrice(this);
+        uint256 amount = _amount.mul(cprice).mul(1e18).div(controller.unit()).mul(lendRate).div(10000);
+        uint256 gprice = controller.getInternalPrice(address(gfc));
+        return amount.mul(controller.unit()).div(gprice).div(1e18);
     }
 
     function getCash() public view returns (uint256) {
@@ -169,18 +246,39 @@ contract Market is MarketInterface {
         emit Supply(msg.sender, amount);
     }
 
+    function harvestSupply() internal{
+        
+        uint256 pending = supplies[msg.sender].supply.mul(accSupplyPerShare).div(ACC_PRECISION).sub(
+                    supplies[msg.sender].rewardDebt
+                );
+        if(pending >0){
+            gfc.mint(msg.sender,pending);
+        }
+    }
+
+    function harvestBorrow() internal{
+        uint256 pending = borrows[msg.sender].principal.mul(accBorrowPerShare).div(ACC_PRECISION).sub(
+                    borrows[msg.sender].rewardDebt
+                );
+        if(pending >0){
+            gfc.mint(msg.sender,pending);
+        }
+    }
+
     function supplyInternal(address supplier, uint256 amount) internal {
+ 
         // TODO check msg.sender != this
         require(token.transferFrom(supplier, address(this), amount), "No enough tokens");
 
         accrueInterest();
-
+        updateSupplyPool();
+        harvestSupply();
         SupplySnapshot storage supplySnapshot = supplies[supplier];
 
         supplySnapshot.supply = updatedSupplyOf(supplier);
         supplies[supplier].supply = supplies[supplier].supply.add(amount);
         supplies[supplier].interestIndex = supplyIndex;
-
+        supplies[supplier].rewardDebt = supplies[supplier].supply.mul(accSupplyPerShare) / ACC_PRECISION;
         totalSupply = totalSupply.add(amount);
     }
 
@@ -199,8 +297,9 @@ contract Market is MarketInterface {
 
     function redeemInternal(address supplier, address receiver, uint256 amount) internal {
         require(token.balanceOf(address(this)) >= amount);
-
         accrueInterest();
+        updateSupplyPool();
+        harvestSupply();
 
         SupplySnapshot storage supplySnapshot = supplies[supplier];
         uint256 currentsupply = updatedSupplyOf(supplier);
@@ -221,12 +320,16 @@ contract Market is MarketInterface {
         } else{
             totalSupply = 0;
         }
+        supplies[supplier].rewardDebt = supplySnapshot.supply.mul(accSupplyPerShare) / ACC_PRECISION;
+
     }
 
     function borrow(uint256 amount) public {
         require(token.balanceOf(address(this)) >= amount);
 
         accrueInterest();
+        updateBorrowPool();
+        harvestBorrow();
 
         BorrowSnapshot storage borrowSnapshot = borrows[msg.sender];
 
@@ -242,6 +345,7 @@ contract Market is MarketInterface {
         require(token.transfer(msg.sender, amount), "No enough tokens to borrow");
 
         borrowSnapshot.principal = borrowSnapshot.principal.add(amount);
+        borrowSnapshot.rewardDebt = borrowSnapshot.principal.mul(accBorrowPerShare) / ACC_PRECISION;
         borrowSnapshot.interestIndex = borrowIndex;
 
         totalBorrows = totalBorrows.add(amount);
@@ -322,8 +426,10 @@ contract Market is MarketInterface {
     }
 
     function payBorrowInternal(address payer, address borrower, uint256 amount) internal returns (uint256 paid, uint256 supplied) {
+        
         accrueInterest();
-
+        updateBorrowPool();
+        harvestBorrow();
         BorrowSnapshot storage snapshot = borrows[borrower];
 
         require(snapshot.principal > 0);
@@ -351,7 +457,7 @@ contract Market is MarketInterface {
         } else{
             totalBorrows = 0;
         }
-
+        snapshot.rewardDebt = snapshot.principal.mul(accBorrowPerShare) / ACC_PRECISION;
         // if (additional > 0)
         //     supplyInternal(payer, additional);
             

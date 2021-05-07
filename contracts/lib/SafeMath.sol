@@ -97,7 +97,9 @@ library SafeMath {
      * - Subtraction cannot overflow.
      */
     function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b <= a, "SafeMath: subtraction overflow");
+        if(b>a){
+            return 0;
+        }
         return a - b;
     }
 

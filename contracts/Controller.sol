@@ -103,6 +103,27 @@ contract Controller {
         return reserve0.mul(token1Decimal).mul(unit).div(reserve1).div(token0Decimal);
     }
 
+    function getInternalPrice(address token) public view returns(uint256){
+        IUniswapV2Pair _pair =
+            IUniswapV2Pair(
+                IUniswapV2Factory(factory).getPair(token, usdt)
+            );
+        if(address(0)==address(_pair)){
+            return 1;
+        }
+        // 从uni获取价格 或者预言机 单位USDT
+        (uint256 reserve0, uint256 reserve1, ) = _pair.getReserves();
+        if(reserve0 <= 0 || reserve1 <= 0){
+            return 1;
+        }
+        uint256 token0Decimal = 10 ** uint256(IERC20(_pair.token0()).decimals());
+        uint256 token1Decimal = 10 ** uint256(IERC20(_pair.token1()).decimals());
+        if (token == _pair.token0()) {
+            return reserve1.mul(token0Decimal).mul(unit).div(reserve0).div(token1Decimal);
+        }
+        return reserve0.mul(token1Decimal).mul(unit).div(reserve1).div(token0Decimal);
+    }
+
     function addMarket(address market) public onlyOwner {
         address marketToken = MarketInterface(market).token();
         require(marketsByToken[marketToken] == address(0));
