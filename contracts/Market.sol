@@ -326,10 +326,9 @@ contract Market is Pool , MarketInterface {
     }
 
     function borrow(uint256 amount) public {
+        require(gfc.transferFrom(msg.sender, address(this), getLendGfc(amount)));
         require(token.balanceOf(address(this)) >= amount);
 
-        accrueInterest();
-        updateBorrowPool();
         harvestBorrow();
 
         BorrowSnapshot storage borrowSnapshot = borrows[msg.sender];
@@ -346,7 +345,6 @@ contract Market is Pool , MarketInterface {
         require(token.transfer(msg.sender, amount), "No enough tokens to borrow");
 
         borrowSnapshot.principal = borrowSnapshot.principal.add(amount);
-        borrowSnapshot.rewardDebt = borrowSnapshot.principal.mul(accBorrowPerShare).div(ACC_PRECISION);
         borrowSnapshot.interestIndex = borrowIndex;
 
         totalBorrows = totalBorrows.add(amount);
@@ -429,8 +427,6 @@ contract Market is Pool , MarketInterface {
     function payBorrowInternal(address payer, address borrower, uint256 amount) internal returns (uint256 paid, uint256 supplied) {
         
         accrueInterest();
-        updateBorrowPool();
-        harvestBorrow();
         BorrowSnapshot storage snapshot = borrows[borrower];
 
         require(snapshot.principal > 0);
@@ -458,7 +454,6 @@ contract Market is Pool , MarketInterface {
         } else{
             totalBorrows = 0;
         }
-        snapshot.rewardDebt = snapshot.principal.mul(accBorrowPerShare).div(ACC_PRECISION);
         // if (additional > 0)
         //     supplyInternal(payer, additional);
             
