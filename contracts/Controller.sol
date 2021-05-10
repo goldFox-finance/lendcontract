@@ -22,6 +22,8 @@ contract Controller {
 
     address public owner;
 
+    address public operator;
+    
     mapping (address => bool) public markets;
     mapping (address => address) public marketsByToken;
     mapping (address => uint) public prices;
@@ -32,17 +34,23 @@ contract Controller {
     uint public liquidationFactor;
     uint public constant MANTISSA = 1e6;
     uint public unit = 1e6;
-    constructor(address _factory,address _usdt) public {
+    constructor(address _factory,address _usdt,address _operator) public {
         owner = msg.sender;
         usdt = _usdt;
         factory = _factory;
+        operator = _operator;
+    }
+
+    modifier onlyOperator() {
+        require(msg.sender == operator);
+        _;
     }
 
     modifier onlyOwner() {
         require(msg.sender == owner);
         _;
     }
-
+    
     modifier onlyMarket() {
         require(markets[msg.sender]);
         _;
@@ -52,7 +60,7 @@ contract Controller {
       return marketList.length;
     }
 
-    function setCollateralFactor(uint factor) public onlyOwner {
+    function setCollateralFactor(uint factor) public onlyOperator {
         collateralFactor = factor;
     }
 
@@ -61,7 +69,7 @@ contract Controller {
     }
 
     // 喂价 或者是通过uni 获得实时价格
-    function setPrice(address market, uint price) public onlyOwner {
+    function setPrice(address market, uint price) public onlyOperator {
         require(market != address(0) , 'ADDRESS ERROR!!!');
         require(markets[market]);
 
