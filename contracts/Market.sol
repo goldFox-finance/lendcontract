@@ -25,7 +25,6 @@ contract Market is MarketInterface {
     
     uint256 public blocksPerYear;
     address public devaddr;
-    address public futou;
     struct SupplySnapshot {
         uint256 supply;
         uint256 interestIndex;
@@ -70,12 +69,8 @@ contract Market is MarketInterface {
         _;
     }
 
-    function setUtilizationRateFraction(uint256 _utilizationRateFraction) public{
+    function setUtilizationRateFraction(uint256 _utilizationRateFraction) public onlyOwner{
         utilizationRateFraction = _utilizationRateFraction;
-    }
-
-    function setFutou(address _futou) public{
-        futou = _futou;
     }
 
     function getCash() public view returns (uint256) {
@@ -116,16 +111,13 @@ contract Market is MarketInterface {
         return supplies[user].supply;
     }
 
-    // 存款本金
-    function balanceOf(address user) public view returns (uint256) {
-        return supplies[user].supply;
-    }
     // 借款额
     function borrowBy(address user) public view returns (uint256) {
         return borrows[user].principal;
     }
 
     function updatedBorrowBy(address user) public view returns (uint256) {
+        require(user != address(0) , 'ADDRESS ERROR!!!');
         BorrowSnapshot storage snapshot = borrows[user];
 
         if (snapshot.principal == 0)
@@ -140,6 +132,7 @@ contract Market is MarketInterface {
     }
 
     function updatedSupplyOf(address user) public view returns (uint256) {
+        require(user != address(0) , 'ADDRESS ERROR!!!');
         SupplySnapshot storage snapshot = supplies[user];
 
         if (snapshot.supply == 0)
@@ -158,12 +151,6 @@ contract Market is MarketInterface {
     }
 
     function supply(uint256 amount) public {
-        supplyInternal(msg.sender, amount);
-
-        emit Supply(msg.sender, amount);
-    }
-
-    function mint(uint256 amount) public {
         supplyInternal(msg.sender, amount);
 
         emit Supply(msg.sender, amount);
