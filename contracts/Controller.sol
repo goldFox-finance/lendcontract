@@ -34,13 +34,6 @@ contract Controller {
     uint public unit = 1e6;
     constructor(address _factory,address _usdt) public {
         owner = msg.sender;
-        // IUniswapV2Pair _pair =
-        //     IUniswapV2Pair(
-        //         UniswapV2Library.pairFor(_factory, _tokenA, _tokenB)
-        //     );
-        // pair = _pair;
-        // token0 = _pair.token0();
-        // token1 = _pair.token1();
         usdt = _usdt;
         factory = _factory;
     }
@@ -69,6 +62,7 @@ contract Controller {
 
     // 喂价 或者是通过uni 获得实时价格
     function setPrice(address market, uint price) public onlyOwner {
+        require(market != address(0) , 'ADDRESS ERROR!!!');
         require(markets[market]);
 
         prices[market] = price;
@@ -79,6 +73,7 @@ contract Controller {
     }
 
     function getDecimal(address t) public view returns(uint256){
+        require(t != address(0) , 'ADDRESS ERROR!!!');
         return 10 ** uint256(IERC20(t).decimals());
     }
 
@@ -104,6 +99,7 @@ contract Controller {
     }
 
     function addMarket(address market) public onlyOwner {
+        require(market != address(0) , 'ADDRESS ERROR!!!');
         address marketToken = MarketInterface(market).token();
         require(marketsByToken[marketToken] == address(0));
         markets[market] = true;
@@ -112,6 +108,7 @@ contract Controller {
     }
 
     function getAccountLiquidity(address account) public view returns (uint) {
+        require(account != address(0) , 'ADDRESS ERROR!!!');
         uint liquidity = 0;
 
         uint supplyValue;
@@ -129,6 +126,7 @@ contract Controller {
     }
 
     function getAccountHealth(address account) public view returns (uint) {
+        require(account != address(0) , 'ADDRESS ERROR!!!');
         uint supplyValue;
         uint borrowValue;
 
@@ -148,6 +146,7 @@ contract Controller {
     }
 
     function getAccountValues(address account) public view returns (uint supplyValue, uint borrowValue) {
+        require(account != address(0) , 'ADDRESS ERROR!!!');
         for (uint k = 0; k < marketList.length; k++) {
             MarketInterface market = MarketInterface(marketList[k]);
             uint price = getPrice(MarketInterface(marketList[k]));
@@ -158,6 +157,8 @@ contract Controller {
     }
     
     function liquidateCollateral(address borrower, address liquidator, uint amount, MarketInterface collateralMarket) public onlyMarket returns (uint collateralAmount)  {
+        require(borrower != address(0) , 'ADDRESS ERROR!!!');
+        require(liquidator != address(0) , 'ADDRESS ERROR!!!');
         uint price = getPrice(MarketInterface(msg.sender));        
         require(price > 0);
 
