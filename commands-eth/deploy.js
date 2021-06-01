@@ -13,7 +13,6 @@ const contract = require('../build/contracts/' + contractname + '.json');
 
 const sender = utils.getAccount(config, from);
 
-console.log(config.host);
 const client = rskapi.client(config.host);
 
 (async function() {

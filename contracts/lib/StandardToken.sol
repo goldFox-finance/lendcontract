@@ -2,7 +2,7 @@ pragma solidity ^0.5.12;
 
 import "./BasicToken.sol";
 import "./ERC20.sol";
-import "./owner.sol";
+
 
 /**
  * @title Standard ERC20 token
@@ -11,7 +11,7 @@ import "./owner.sol";
  * https://github.com/ethereum/EIPs/issues/20
  * Based on code by FirstBlood: https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
-contract StandardToken is ERC20, BasicToken,Owner {
+contract StandardToken is ERC20, BasicToken {
 
     mapping (address => mapping (address => uint256)) internal allowed;
 

@@ -1,0 +1,183 @@
+{
+  "contractName": "NonMarket",
+  "abi": [
+    {
+      "inputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    }
+  ],
+  "metadata": "{\"compiler\":{\"version\":\"0.5.12+commit.7709ece9\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"}],\"devdoc\":{\"methods\":{}},\"userdoc\":{\"methods\":{}}},\"settings\":{\"compilationTarget\":{\"/Users/fanxu/www/node/DeFi-ETH/contracts/NonMarket.sol\":\"NonMarket\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"/Users/fanxu/www/node/DeFi-ETH/contracts/NonMarket.sol\":{\"keccak256\":\"0xeac49e5cc12ff8058147fa4e05fa88a08d4a812f437a1b7350c97fc8a3a11643\",\"urls\":[\"bzz-raw://063b6b942f86165947bacc6b6707e0164f113c0d9034328515c4f5ab1fcc01d3\",\"dweb:/ipfs/QmUekr5TLmZGmWUobtGFtnQBa39p9Tra4JXQ1EMCn34Tv4\"]}},\"version\":1}",
+  "bytecode": "0x6080604052348015600f57600080fd5b50603e80601d6000396000f3fe6080604052600080fdfea265627a7a7231582079ccbc41d0115904d33127b94c3b7bac54c9c2330d10b0d1ae3e2aec9106f0b064736f6c634300050c0032",
+  "deployedBytecode": "0x6080604052600080fdfea265627a7a7231582079ccbc41d0115904d33127b94c3b7bac54c9c2330d10b0d1ae3e2aec9106f0b064736f6c634300050c0032",
+  "sourceMap": "34:53:3:-;;;57:26;8:9:-1;5:2;;;30:1;27;20:12;5:2;57:26:3;34:53;;;;;;",
+  "deployedSourceMap": "34:53:3:-;;;;;",
+  "source": "pragma solidity >= 0.5.0 < 0.8.0;\ncontract NonMarket {\n  constructor() public {\n  }\n \n}\n",
+  "sourcePath": "/Users/fanxu/www/node/DeFi-ETH/contracts/NonMarket.sol",
+  "ast": {
+    "absolutePath": "/Users/fanxu/www/node/DeFi-ETH/contracts/NonMarket.sol",
+    "exportedSymbols": {
+      "NonMarket": [
+        2345
+      ]
+    },
+    "id": 2346,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 2340,
+        "literals": [
+          "solidity",
+          ">=",
+          "0.5",
+          ".0",
+          "<",
+          "0.8",
+          ".0"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "0:33:3"
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": null,
+        "fullyImplemented": true,
+        "id": 2345,
+        "linearizedBaseContracts": [
+          2345
+        ],
+        "name": "NonMarket",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": {
+              "id": 2343,
+              "nodeType": "Block",
+              "src": "78:5:3",
+              "statements": []
+            },
+            "documentation": null,
+            "id": 2344,
+            "implemented": true,
+            "kind": "constructor",
+            "modifiers": [],
+            "name": "",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 2341,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "68:2:3"
+            },
+            "returnParameters": {
+              "id": 2342,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "78:0:3"
+            },
+            "scope": 2345,
+            "src": "57:26:3",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          }
+        ],
+        "scope": 2346,
+        "src": "34:53:3"
+      }
+    ],
+    "src": "0:88:3"
+  },
+  "legacyAST": {
+    "absolutePath": "/Users/fanxu/www/node/DeFi-ETH/contracts/NonMarket.sol",
+    "exportedSymbols": {
+      "NonMarket": [
+        2345
+      ]
+    },
+    "id": 2346,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 2340,
+        "literals": [
+          "solidity",
+          ">=",
+          "0.5",
+          ".0",
+          "<",
+          "0.8",
+          ".0"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "0:33:3"
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": null,
+        "fullyImplemented": true,
+        "id": 2345,
+        "linearizedBaseContracts": [
+          2345
+        ],
+        "name": "NonMarket",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": {
+              "id": 2343,
+              "nodeType": "Block",
+              "src": "78:5:3",
+              "statements": []
+            },
+            "documentation": null,
+            "id": 2344,
+            "implemented": true,
+            "kind": "constructor",
+            "modifiers": [],
+            "name": "",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 2341,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "68:2:3"
+            },
+            "returnParameters": {
+              "id": 2342,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "78:0:3"
+            },
+            "scope": 2345,
+            "src": "57:26:3",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          }
+        ],
+        "scope": 2346,
+        "src": "34:53:3"
+      }
+    ],
+    "src": "0:88:3"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.5.12+commit.7709ece9.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "3.2.5",
+  "updatedAt": "2021-05-07T09:56:21.126Z",
+  "devdoc": {
+    "methods": {}
+  },
+  "userdoc": {
+    "methods": {}
+  }
+}

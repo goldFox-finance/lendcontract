@@ -1,10 +1,10 @@
 pragma solidity >=0.5.0 <0.8.0;
 
+import "./lib/ERC20.sol";
 import "./Controller.sol";
-import "./lib/Pool.sol";
-import './lib/SafeMath.sol';
+import "./lib/SafeMath.sol";
 
-contract Market is Pool , MarketInterface {
+contract Market is MarketInterface {
     using SafeMath for uint256;
 
     address public owner;
@@ -17,6 +17,7 @@ contract Market is Pool , MarketInterface {
     uint256 public supplyIndex;
 
     uint256 public accrualBlockNumber;
+    ERC20 public gfc;
     uint256 public lendRate;
     uint256 public borrowIndex;
     uint256 public totalBorrows;
@@ -25,21 +26,18 @@ contract Market is Pool , MarketInterface {
     
     uint256 public blocksPerYear;
     address public devaddr;
-    address public futou;
     struct SupplySnapshot {
         uint256 supply;
         uint256 interestIndex;
-        uint256 rewardDebt;
     }
 
     struct BorrowSnapshot {
         uint256 principal;
         uint256 interestIndex;
-        uint256 rewardDebt;
     }
 
-    mapping (address => SupplySnapshot) public supplies;
-    mapping (address => BorrowSnapshot) public borrows;
+    mapping (address => SupplySnapshot) supplies;
+    mapping (address => BorrowSnapshot) borrows;
 
     uint256 public constant FACTOR = 1e18;
 
@@ -49,7 +47,7 @@ contract Market is Pool , MarketInterface {
     event PayBorrow(address user, uint256 amount);
     event LiquidateBorrow(address borrower, uint256 amount, address liquidator, address collateralMarket, uint256 collateralAmount);
 
-    constructor(ERC20 _token,ERC20 _gfc, uint256 _baseBorrowAnnualRate, uint256 _blocksPerYear, uint256 _utilizationRateFraction,address _devaddr) public {
+    constructor(ERC20 _token,ERC20 _gfc,uint256 _lendRate, uint256 _baseBorrowAnnualRate, uint256 _blocksPerYear, uint256 _utilizationRateFraction,address _devaddr) public {
         require(ERC20(_token).totalSupply() >= 0);
         owner = msg.sender;
         token = _token;
@@ -59,67 +57,9 @@ contract Market is Pool , MarketInterface {
         baseBorrowRate = _baseBorrowAnnualRate.div(_blocksPerYear);
         accrualBlockNumber = block.number;
         devaddr = _devaddr;
-        gfc = _gfc;
         utilizationRateFraction = _utilizationRateFraction.mul(FACTOR).div(_blocksPerYear);
-    }
-
-    /// @notice View function to see pending SUSHI on frontend.
-    /// @param _user Address of user.
-    /// @return pending  reward for a given user.
-    function pendingSupply(address _user) public view returns (uint256) {
-        SupplySnapshot storage user = supplies[_user];
-        uint256 lpSupply = totalSupply;
-        uint256 _accPerShare = accSupplyPerShare;
-        if (block.number > lastSupplyRewardBlock && lpSupply != 0) {
-            uint256 blocks = block.number.sub(lastSupplyRewardBlock);
-            uint256 reward = blocks.mul(supplyPerBlock);
-            uint256 accReward = reward.mul(ACC_PRECISION).div(lpSupply);
-            _accPerShare = _accPerShare.add(accReward);
-        }
-        return user.supply.mul(_accPerShare).div(ACC_PRECISION).sub(user.rewardDebt);
-    }
-
-    /// @notice View function to see pending SUSHI on frontend.
-    /// @param _user Address of user.
-    /// @return pending SUSHI reward for a given user.
-    function pendingBorrow(address _user) public view returns (uint256) {
-        BorrowSnapshot storage user = borrows[_user];
-        uint256 lpSupply = totalBorrows;
-        uint256 _accPerShare = accBorrowPerShare;
-        if (block.number > lastBorrowRewardBlock && lpSupply != 0) {
-            uint256 blocks = block.number.sub(lastBorrowRewardBlock);
-            uint256 reward = blocks.mul(borrowPerBlock);
-            _accPerShare = _accPerShare.add(reward.mul(ACC_PRECISION).div(lpSupply));
-        }
-        return user.principal.mul(_accPerShare).div(ACC_PRECISION).sub(user.rewardDebt);
-    }
-
-      /// @notice Update reward variables of the given pool.
-    /// @return pool Returns the pool that was updated.
-    function updateSupplyPool() public {
-        if (block.number > lastSupplyRewardBlock) {
-            uint256 lpSupply = getUpdatedTotalSupply();
-            if (lpSupply > 0) {
-                uint256 blocks = block.number.sub(lastSupplyRewardBlock);
-                uint256 reward = blocks.mul(supplyPerBlock);
-                accSupplyPerShare = accSupplyPerShare.add((reward.mul(ACC_PRECISION).div(lpSupply)));
-            }
-            lastSupplyRewardBlock = block.number;
-        }
-    }
-
-    /// @notice Update reward variables of the given pool.
-    /// @return pool Returns the pool that was updated.
-    function updateBorrowPool() public {
-        if (block.number > lastBorrowRewardBlock) {
-            uint256 lpSupply = getUpdatedTotalBorrows();
-            if (lpSupply > 0) {
-                uint256 blocks = block.number.sub(lastBorrowRewardBlock);
-                uint256 reward = blocks.mul(borrowPerBlock);
-                accBorrowPerShare = accBorrowPerShare.add((reward.mul(ACC_PRECISION).div(lpSupply)));
-            }
-            lastBorrowRewardBlock = block.number;
-        }
+        gfc = _gfc;
+        lendRate = _lendRate;
     }
 
     modifier onlyOwner() {
@@ -132,12 +72,12 @@ contract Market is Pool , MarketInterface {
         _;
     }
 
-    function setUtilizationRateFraction(uint256 _utilizationRateFraction) public{
+    function setUtilizationRateFraction(uint256 _utilizationRateFraction) public onlyOwner{
         utilizationRateFraction = _utilizationRateFraction;
     }
 
-    function setFutou(address _futou) public{
-        futou = _futou;
+    function setBlocksPerYear(uint256 _blocksPerYear) public onlyOwner{
+        blocksPerYear = _blocksPerYear;
     }
 
     function setGfc(ERC20 _gfc) public{
@@ -155,6 +95,7 @@ contract Market is Pool , MarketInterface {
         uint256 gprice = controller.getInternalPrice(address(gfc));
         return amount.mul(controller.unit()).div(gprice).div(1e18);
     }
+
 
     function getCash() public view returns (uint256) {
         return token.balanceOf(address(this));
@@ -247,39 +188,18 @@ contract Market is Pool , MarketInterface {
         emit Supply(msg.sender, amount);
     }
 
-    function harvestSupply() internal{
-        
-        uint256 pending = supplies[msg.sender].supply.mul(accSupplyPerShare).div(ACC_PRECISION).sub(
-                    supplies[msg.sender].rewardDebt
-                );
-        if(pending >0){
-            gfc.mint(msg.sender,pending);
-        }
-    }
-
-    function harvestBorrow() internal{
-        uint256 pending = borrows[msg.sender].principal.mul(accBorrowPerShare).div(ACC_PRECISION).sub(
-                    borrows[msg.sender].rewardDebt
-                );
-        if(pending >0){
-            gfc.mint(msg.sender,pending);
-        }
-    }
-
     function supplyInternal(address supplier, uint256 amount) internal {
- 
         // TODO check msg.sender != this
         require(token.transferFrom(supplier, address(this), amount), "No enough tokens");
 
         accrueInterest();
-        updateSupplyPool();
-        harvestSupply();
+
         SupplySnapshot storage supplySnapshot = supplies[supplier];
 
         supplySnapshot.supply = updatedSupplyOf(supplier);
         supplies[supplier].supply = supplies[supplier].supply.add(amount);
         supplies[supplier].interestIndex = supplyIndex;
-        supplies[supplier].rewardDebt = supplies[supplier].supply.mul(accSupplyPerShare).div(ACC_PRECISION);
+
         totalSupply = totalSupply.add(amount);
     }
 
@@ -298,9 +218,8 @@ contract Market is Pool , MarketInterface {
 
     function redeemInternal(address supplier, address receiver, uint256 amount) internal {
         require(token.balanceOf(address(this)) >= amount);
+
         accrueInterest();
-        updateSupplyPool();
-        harvestSupply();
 
         SupplySnapshot storage supplySnapshot = supplies[supplier];
         uint256 currentsupply = updatedSupplyOf(supplier);
@@ -321,15 +240,13 @@ contract Market is Pool , MarketInterface {
         } else{
             totalSupply = 0;
         }
-        supplySnapshot.rewardDebt = supplySnapshot.supply.mul(accSupplyPerShare).div(ACC_PRECISION);
-
     }
 
     function borrow(uint256 amount) public {
-        require(gfc.transferFrom(msg.sender, address(this), getLendGfc(amount)));
+        gfc.transferFrom(msg.sender, address(this), getLendGfc(amount));
         require(token.balanceOf(address(this)) >= amount);
 
-        harvestBorrow();
+        accrueInterest();
 
         BorrowSnapshot storage borrowSnapshot = borrows[msg.sender];
 
@@ -425,8 +342,8 @@ contract Market is Pool , MarketInterface {
     }
 
     function payBorrowInternal(address payer, address borrower, uint256 amount) internal returns (uint256 paid, uint256 supplied) {
-        
         accrueInterest();
+
         BorrowSnapshot storage snapshot = borrows[borrower];
 
         require(snapshot.principal > 0);
@@ -454,6 +371,7 @@ contract Market is Pool , MarketInterface {
         } else{
             totalBorrows = 0;
         }
+
         // if (additional > 0)
         //     supplyInternal(payer, additional);
             
@@ -461,8 +379,8 @@ contract Market is Pool , MarketInterface {
     }
     
     function liquidateBorrow(address borrower, uint256 amount, MarketInterface collateralMarket) public {
-        require(amount > 0);
-        require(borrower != msg.sender);
+        require(amount > 0,'金额错误');
+        require(borrower != msg.sender,'sender 错误');
         
         accrueInterest();
         collateralMarket.accrueInterest();

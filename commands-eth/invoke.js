@@ -25,7 +25,6 @@ else {
 
 (async function() {
     try {
-        console.log('=====',args);
         const txh = await client.invoke(from, to, fn, args);
         console.log('transaction', txh);
         

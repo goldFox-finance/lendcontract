@@ -14,13 +14,13 @@ contract BasicToken is ERC20Basic {
 
     mapping(address => uint256) balances;
 
-    uint256 _totalSupply;
+    uint256 totalSupply_;
 
     /**
     * @dev Total number of tokens in existence
     */
     function totalSupply() public view returns (uint256) {
-        return _totalSupply;
+        return totalSupply_;
     }
 
     /**
